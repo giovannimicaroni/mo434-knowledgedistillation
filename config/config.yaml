@@ -2,20 +2,30 @@ teacher:
   architecture: "vgg11"
   weights: "DEFAULT"
   weights_path: null
+  save_path: "checkpoints/teacher_vgg11.pth"
+  force_retrain: false
   pretrained: true
   num_classes: 37
   freeze_feature_extractor: true
   train_classifier_only: true
 
+student:
+  architecture: "mobile_cnn"
+  force_reextract: false
+
 training:
   batch_size: 32
-  fine_tune_epochs: 15
-  fine_tune_lr: 0.001
-  distillation_epochs: 50
+  fine_tune_epochs: 10
+  fine_tune_lr: 0.0001
+  distillation_epochs: 15
   distillation_lr: 0.0002
   optimizer: "Adam"
 
 dataset:
+  name: "oxford_pet"
   path: "/home/gimicaroni/Documents/Datasets/Oxford-Pet-Dataset/images/images"
   image_size: 224
+
+cache:
+  dir: "cache"
 

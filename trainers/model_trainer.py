@@ -5,12 +5,12 @@ from tqdm import tqdm
 
 
 class ModelTrainer:
-    def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None):
+    def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None, criterion=None):
         self.model = model
         self.epochs = epochs
         self.batch_size = batch_size
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = criterion if criterion is not None else nn.CrossEntropyLoss()
         self.optimizer = optimizer_cls(
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr
         )
