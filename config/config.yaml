@@ -16,6 +16,6 @@ training:
   optimizer: "Adam"
 
 dataset:
-  path: "/home/gimicaroni/Documents/Datasets/Oxford-Pet-Dataset/images"
+  path: "/home/gimicaroni/Documents/Datasets/Oxford-Pet-Dataset/images/images"
   image_size: 224
 
