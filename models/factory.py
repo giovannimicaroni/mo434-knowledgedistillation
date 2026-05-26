@@ -1,8 +1,10 @@
 from models.vgg_teacher import VGGTeacher
 from models.student import MobileStudentModel
+from models.resnet_teacher import ResNetTeacher
 
 _TEACHERS = {
     "vgg11": VGGTeacher,
+    "ResNet34": ResNetTeacher,
 }
 
 _STUDENTS = {
