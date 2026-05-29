@@ -8,8 +8,10 @@ from tqdm import tqdm
 from config.config_loader import load_config
 from data.factory import build_dataset
 from models.factory import build_student
-from trainers.model_trainer import ModelTrainer
+from trainers.model_trainer import ModelTrainer, ModelTrainerCombined
 from finetune_teacher import finetune_teacher
+
+import torch.nn.functional as F
 
 
 class DistillationDataset(Dataset):
@@ -104,6 +106,96 @@ def distill_student(config_path=None):
     print("\nEvaluating student with teacher classifier...")
     _evaluate_student(student, teacher, dataset, cfg.training.batch_size)
 
+class DistillationDataset(Dataset):
+    def __init__(self, image_dataset, teacher_features):
+        self.image_dataset = image_dataset
+        self.teacher_features = teacher_features
+
+    def __len__(self):
+        return len(self.image_dataset)
+
+    def __getitem__(self, idx):
+        # Extract both the image and the true label
+        image, label = self.image_dataset[idx]
+        
+        # Return all three components
+        return image, self.teacher_features[idx], label
+    
+class CombinedDistillationLoss(nn.Module):
+    def __init__(self, teacher_model, alpha=0.5):
+        """
+        alpha: Weight balancing the two losses. 
+               alpha=1.0 is pure MSE, alpha=0.0 is pure Cross Entropy.
+        """
+        super().__init__()
+        self.teacher = teacher_model
+        self.alpha = alpha
+        self.mse_loss = nn.MSELoss()
+        self.entropy_loss = nn.CrossEntropyLoss()
+
+    def forward(self, student_features, teacher_features, labels):
+
+
+        student_pooled = torch.mean(student_features, dim=[2, 3])
+        teacher_pooled = torch.mean(teacher_features, dim=[2, 3])
+        
+        # Calculate MSE on the pooled vectors instead of the raw spatial maps
+        loss_mse = self.mse_loss(student_pooled, teacher_pooled)
+        student_logits = self.teacher.forward_classifier(student_features)
+        loss_ce = self.entropy_loss(student_logits, labels)
+        
+        # 3. Combine them
+        total_loss = (self.alpha * loss_mse) + ((1 - self.alpha) * loss_ce)
+        
+        return total_loss, loss_mse, loss_ce
+
+def distill_student_combined(config_path=None, alpha=0.5):
+    cfg = load_config(config_path)
+
+    teacher = finetune_teacher(config_path)
+
+    # Deterministic transforms only — no augmentation, since features are extracted once
+    transform = transforms.Compose([
+        transforms.Resize((cfg.dataset.image_size, cfg.dataset.image_size)),
+        transforms.ConvertImageDtype(torch.float),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    dataset = build_dataset(cfg, transform=transform)
+
+    cache_path = Path(cfg.cache.dir) / f"features_{cfg.teacher.architecture}_{cfg.dataset.name}.pt"
+    if cfg.student.force_reextract and cache_path.exists():
+        cache_path.unlink()
+
+    teacher_features = _extract_teacher_features(teacher, dataset, cfg.training.batch_size, cache_path)
+    distillation_dataset = DistillationDataset(dataset, teacher_features)
+
+    combined_criterion = CombinedDistillationLoss(teacher, alpha=alpha)
+
+    student = build_student(cfg)
+
+    teacher.eval()
+    # Freeze the entire teacher model to save memory and prevent any updates
+    for param in teacher.parameters():
+        param.requires_grad = False
+        
+    print("Teacher model successfully frozen!")
+
+    trainer = ModelTrainerCombined(
+        model=student,
+        lr=cfg.training.distillation_lr,
+        epochs=cfg.training.distillation_epochs,
+        batch_size=cfg.training.batch_size,
+        criterion=combined_criterion,
+    )
+    trainer.fit(distillation_dataset)
+
+    print("\nEvaluating student with teacher classifier...")
+    _evaluate_student(student, teacher, dataset, cfg.training.batch_size)
+
+    print(student.get_student_parameters()['total'])
+    print(teacher.get_teacher_parameters()['total'] - teacher.get_teacher_parameters()['classifier_module'])
 
 if __name__ == "__main__":
-    distill_student()
+    distill_student_combined(alpha=1)
+    distill_student_combined(alpha=0.5)
+    distill_student_combined(alpha=0)

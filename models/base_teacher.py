@@ -96,3 +96,32 @@ class BaseTeacherModel(nn.Module, ABC):
         if classifier_module is not None:
             for param in classifier_module.parameters():
                 param.requires_grad = True
+
+    def get_teacher_parameters(self) -> dict:
+        # 1. Total and Trainable parameters
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        
+        # 2. Feature Extractor parameters
+        feature_params = 0
+        if self.features is not None:
+            feature_params = sum(p.numel() for p in self.features.parameters())
+            
+        # 3. Classifier parameters
+        classifier_params = 0
+        if self.classifier is not None:
+            classifier_params = sum(p.numel() for p in self.classifier.parameters())
+            
+        # 4. AvgPool parameters (rarely has parameters, but good to cover)
+        avgpool_params = 0
+        if self.avgpool is not None:
+            avgpool_params = sum(p.numel() for p in self.avgpool.parameters())
+
+        return {
+            "total": total_params,
+            "trainable": trainable_params,
+            "frozen": total_params - trainable_params,
+            "features_module": feature_params,
+            "classifier_module": classifier_params,
+            "avgpool_module": avgpool_params
+        }

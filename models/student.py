@@ -38,3 +38,30 @@ class MobileStudentModel(nn.Module):
 
     def forward(self, x):
         return self.features(self.initial(x))  # (B, 512, 7, 7)
+
+    def get_student_parameters(self) -> dict:
+        """
+        Calculates the total, trainable, and block-specific parameter 
+        counts for the MobileStudentModel.
+        """
+        # 1. General counts
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        
+        # 2. Initial block parameters (The first standard Conv2d)
+        initial_params = 0
+        if hasattr(self, 'initial') and self.initial is not None:
+            initial_params = sum(p.numel() for p in self.initial.parameters())
+            
+        # 3. Features block parameters (The Depthwise Separable layers)
+        features_params = 0
+        if hasattr(self, 'features') and self.features is not None:
+            features_params = sum(p.numel() for p in self.features.parameters())
+
+        return {
+            "total": total_params,
+            "trainable": trainable_params,
+            "frozen": total_params - trainable_params,
+            "initial_block": initial_params,
+            "features_block": features_params
+        }
