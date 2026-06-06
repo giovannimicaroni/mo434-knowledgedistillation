@@ -32,8 +32,9 @@ class MobileStudentModel(nn.Module):
             DepthwiseSeparableBlock(32, 64), nn.MaxPool2d(2),   # 112 -> 56
             DepthwiseSeparableBlock(64, 128), nn.MaxPool2d(2),  # 56 -> 28
             DepthwiseSeparableBlock(128, 256), nn.MaxPool2d(2), # 28 -> 14
+            DepthwiseSeparableBlock(256, 256),
             DepthwiseSeparableBlock(256, 512), nn.MaxPool2d(2), # 14 -> 7
-            DepthwiseSeparableBlock(512, 512),                  # 7x7, keep channels
+            DepthwiseSeparableBlock(512, 512),                # 7x7, keep channels
         )
 
     def forward(self, x):

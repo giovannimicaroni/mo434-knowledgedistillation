@@ -1,7 +1,9 @@
 from data.pet_dataset import PetDataset
+from data.cifar_10_dataset import CIFAR10Dataset
 
 _DATASETS = {
     "oxford_pet": PetDataset,
+    "cifar_10": CIFAR10Dataset,
 }
 
 

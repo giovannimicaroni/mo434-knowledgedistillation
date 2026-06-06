@@ -30,6 +30,7 @@ class ModelTrainer:
                 loss = self.criterion(outputs, labels)
                 loss.backward()
                 self.optimizer.step()
+                #self.scheduler.step()
 
                 running_loss += loss.item()
 

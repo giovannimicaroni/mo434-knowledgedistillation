@@ -36,7 +36,6 @@ class ResNetTeacher(BaseTeacherModel):
             model.layer4
         )
         
-        # 4. Map the 'fc' layer to 'classifier'
         model.classifier = model.fc
 
         return model

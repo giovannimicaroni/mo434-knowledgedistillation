@@ -1,6 +1,7 @@
 import torch
 from pathlib import Path
 from torchvision import transforms
+from torch.utils.data import random_split
 
 from config.config_loader import load_config
 from data.factory import build_dataset
@@ -20,14 +21,25 @@ def finetune_teacher(config_path=None):
         return teacher
 
     transform = transforms.Compose([
-        transforms.Resize((cfg.dataset.image_size, cfg.dataset.image_size)),
+        transforms.ToTensor(),
         transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.Resize((cfg.dataset.image_size, cfg.dataset.image_size)),
         transforms.ConvertImageDtype(torch.float),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
     dataset = build_dataset(cfg, transform=transform)
+
+    # Have to keep in mind seed for both teacher and student train/val split
+    seed = 42
+    gen = torch.Generator().manual_seed(seed)
+
+    train_dataset, test_dataset = random_split(
+        dataset, 
+        lengths=[0.8, 0.2],
+        generator=gen
+    )
     teacher = build_teacher(cfg)
     teacher.freeze_feature_extractor()
 
@@ -37,8 +49,8 @@ def finetune_teacher(config_path=None):
         epochs=cfg.training.fine_tune_epochs,
         batch_size=cfg.training.batch_size,
     )
-    trainer.fit(dataset)
-    trainer.evaluate(dataset)
+    trainer.fit(train_dataset)
+    trainer.evaluate(test_dataset)
 
     if save_path:
         save_path.parent.mkdir(parents=True, exist_ok=True)
