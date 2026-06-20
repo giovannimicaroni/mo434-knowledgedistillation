@@ -9,7 +9,7 @@ from tqdm import tqdm
 from config.config_loader import load_config
 from data.factory import build_dataset
 from models.factory import build_student
-from trainers.model_trainer import ModelTrainer, ModelTrainerCombined
+from trainers.model_trainer import ModelTrainer, ModelTrainerCombined, ReletionalModelTrainer
 from finetune_teacher import finetune_teacher
 
 import torch.nn.functional as F
@@ -207,18 +207,81 @@ def distill_student_combined(config_path=None, alpha=0.5):
 
     print("\nEvaluating student with teacher classifier...")
     acc = _evaluate_student(student, teacher, test_dataset, cfg.training.batch_size)
+    print("Number of parameters in the student: ", student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"])
+    print("Number of parameters in the teacher: ", teacher.get_teacher_parameters()["total"])
     print("The ratio of the size of the student and the teacher is: ", (student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"]) / teacher.get_teacher_parameters()["total"])
     return acc, student, teacher
 
-if __name__ == "__main__":
-    accuracies = []
-    for i in range(0, 11):
-        accuracies.append(distill_student_combined(alpha=0.1 * i)[0])
-    plt.plot([0.1 * i for i in range(0, 11)], accuracies, color='green', marker='o')
-    
-    plt.xlabel("Alpha")
-    plt.ylabel("Accuracy")
-    plt.show()
+def distill_student_reletional(config_path=None, alpha=0.5):
+    cfg = load_config(config_path)
 
-# if __name__ == '__main__':
-#      distill_student_combined(alpha=0.8)
+    teacher = finetune_teacher(config_path)
+
+    # Deterministic transforms only — no augmentation, since features are extracted once
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.Resize((cfg.dataset.image_size, cfg.dataset.image_size)),
+        transforms.ConvertImageDtype(torch.float),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+
+    ])
+    dataset = build_dataset(cfg, transform=transform)
+    # Have to keep in mind seed for both teacher and student train/val split
+    seed = 42
+    gen = torch.Generator().manual_seed(seed)
+
+    train_dataset, test_dataset = random_split(
+        dataset, 
+        lengths=[0.8, 0.2],
+        generator=gen
+    )
+
+    cache_path = Path(cfg.cache.dir) / f"features_{cfg.teacher.architecture}_{cfg.dataset.name}.pt"
+    if cfg.student.force_reextract and cache_path.exists():
+        cache_path.unlink()
+
+    teacher_features = _extract_teacher_features(teacher, train_dataset, cfg.training.batch_size, cache_path)
+    distillation_dataset = DistillationDatasetCombined(train_dataset, teacher_features)
+
+    combined_criterion = CombinedDistillationLoss(teacher, alpha=alpha)
+
+    student = build_student(cfg)
+
+    teacher.eval()
+    # Freeze the entire teacher model to save memory and prevent any updates
+    for param in teacher.parameters():
+        param.requires_grad = False
+        
+    print("Teacher model successfully frozen!")
+
+    trainer = ReletionalModelTrainer(
+        model=student,
+        lr=cfg.training.distillation_lr,
+        epochs=cfg.training.distillation_epochs,
+        batch_size=cfg.training.batch_size,
+        criterion=combined_criterion,
+    )
+    trainer.fit(distillation_dataset)
+
+    print("\nEvaluating student with teacher classifier...")
+    acc = _evaluate_student(student, teacher, test_dataset, cfg.training.batch_size)
+    print("Number of parameters in the student: ", student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"])
+    print("Number of parameters in the teacher: ", teacher.get_teacher_parameters()["total"])
+    print("The ratio of the size of the student and the teacher is: ", (student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"]) / teacher.get_teacher_parameters()["total"])
+    return acc, student, teacher
+
+# if __name__ == "__main__":
+#     accuracies = []
+#     for i in range(0, 11):
+#         accuracies.append(distill_student_combined(alpha=0.1 * i)[0])
+#     plt.plot([0.1 * i for i in range(0, 11)], accuracies, color='green', marker='o')
+    
+#     plt.xlabel("Alpha")
+#     plt.ylabel("Accuracy")
+#     plt.show()
+
+if __name__ == '__main__':
+    #distill_student_combined(alpha=0.8)
+    distill_student_reletional(alpha=0.8)

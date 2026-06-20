@@ -1,6 +1,5 @@
 import torch.nn as nn
 
-
 class DepthwiseSeparableBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -15,49 +14,46 @@ class DepthwiseSeparableBlock(nn.Module):
         return x
 
 
-class MobileStudentModel(nn.Module):
-    """Lightweight student feature extractor using depthwise separable convolutions.
-
-    Outputs (B, 512, 7, 7) spatial feature maps compatible with the teacher's forward_classifier.
+class BaseStudentModel(nn.Module):
     """
-
-    def __init__(self):
+    A generic parent class that handles forward passes, layer generation,
+    and parameter tracking so you don't have to rewrite them.
+    """
+    def __init__(self, initial_channels: int, config: list):
         super().__init__()
+        
+        # 1. Standard Initial Block
         self.initial = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.Conv2d(3, initial_channels, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),  # 224 -> 112
         )
-        self.features = nn.Sequential(
-            DepthwiseSeparableBlock(32, 64), nn.MaxPool2d(2),   # 112 -> 56
-            DepthwiseSeparableBlock(64, 128), nn.MaxPool2d(2),  # 56 -> 28
-            DepthwiseSeparableBlock(128, 256), nn.MaxPool2d(2), # 28 -> 14
-            DepthwiseSeparableBlock(256, 256),
-            DepthwiseSeparableBlock(256, 512), nn.MaxPool2d(2), # 14 -> 7
-            DepthwiseSeparableBlock(512, 512),                # 7x7, keep channels
-        )
+        
+        # 2. Dynamically build the features pipeline based on the config
+        self.features = self._make_layers(initial_channels, config)
+
+    def _make_layers(self, in_channels, config):
+        layers = []
+        current_channels = in_channels
+        
+        # Parse the config: each element is (out_channels, should_maxpool)
+        for out_channels, pool_after in config:
+            layers.append(DepthwiseSeparableBlock(current_channels, out_channels))
+            if pool_after:
+                layers.append(nn.MaxPool2d(2))
+            current_channels = out_channels
+            
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.features(self.initial(x))  # (B, 512, 7, 7)
+        return self.features(self.initial(x))
 
     def get_student_parameters(self) -> dict:
-        """
-        Calculates the total, trainable, and block-specific parameter 
-        counts for the MobileStudentModel.
-        """
-        # 1. General counts
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         
-        # 2. Initial block parameters (The first standard Conv2d)
-        initial_params = 0
-        if hasattr(self, 'initial') and self.initial is not None:
-            initial_params = sum(p.numel() for p in self.initial.parameters())
-            
-        # 3. Features block parameters (The Depthwise Separable layers)
-        features_params = 0
-        if hasattr(self, 'features') and self.features is not None:
-            features_params = sum(p.numel() for p in self.features.parameters())
+        initial_params = sum(p.numel() for p in self.initial.parameters()) if self.initial else 0
+        features_params = sum(p.numel() for p in self.features.parameters()) if self.features else 0
 
         return {
             "total": total_params,
@@ -66,3 +62,51 @@ class MobileStudentModel(nn.Module):
             "initial_block": initial_params,
             "features_block": features_params
         }
+    
+class MobileStudentModel(BaseStudentModel):
+    def __init__(self):
+        # Configuration mapping out your original architecture: (channels, max_pool?)
+        config = [
+            (64, True),   # 112 -> 56
+            (128, True),  # 56 -> 28
+            (256, True),  # 28 -> 14
+            (256, False), # Keeps 14x14
+            (512, True),  # 14 -> 7
+            (512, False)  # Keeps 7x7
+        ]
+        super().__init__(initial_channels=32, config=config)
+    
+class SlimStudentModel(BaseStudentModel):
+    def __init__(self):
+        config = [
+            (32, True),
+            (64, True),
+            (128, True),
+            (256, True),
+            (512, False)  # Aggressive downsampling straight to 7x7
+        ]
+        super().__init__(initial_channels=32, config=config)
+
+class MediumSlimModel(BaseStudentModel):
+    def __init__(self):
+        config = [
+            (64, True),   # 112 -> 56
+            (128, True),  # 56 -> 28
+            (256, True),  # 28 -> 14
+            (512, True),  # 14 -> 7
+            (512, False)  # Keeps 7x7, expands capacity at the bottleneck
+        ]
+        # Starts with 32 initial channels
+        super().__init__(initial_channels=32, config=config)
+
+class MediumLargeModel(BaseStudentModel):
+    def __init__(self):
+        config = [
+            (64, True),   # 112 -> 56
+            (128, True),  # 56 -> 28
+            (192, True),  # 28 -> 14 (Slimmed down from 256)
+            (256, False), # 14 -> 14 (Slimmed down from 256)
+            (512, True),  # 14 -> 7
+            (512, False)  # Keeps 7x7
+        ]
+        super().__init__(initial_channels=32, config=config)

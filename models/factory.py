@@ -1,5 +1,5 @@
 from models.vgg_teacher import VGGTeacher
-from models.student import MobileStudentModel
+from models.student import MobileStudentModel, SlimStudentModel, MediumLargeModel, MediumSlimModel
 from models.resnet_teacher import ResNetTeacher
 
 _TEACHERS = {
@@ -9,6 +9,9 @@ _TEACHERS = {
 
 _STUDENTS = {
     "mobile_cnn": MobileStudentModel,
+    "slim_student": SlimStudentModel,
+    "medium_slim_student": MediumSlimModel,
+    "medium_large_student": MediumLargeModel
 }
 
 
