@@ -5,6 +5,21 @@ from tqdm import tqdm
 import torch.nn.functional as F
 
 
+@torch.no_grad()
+def _distill_accuracy(model, teacher, dataset, batch_size, device):
+    """Student accuracy: student features passed through the frozen teacher classifier."""
+    model.eval()
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    correct = total = 0
+    for images, labels in loader:
+        images, labels = images.to(device), labels.to(device)
+        outputs = teacher.forward_classifier(model(images))
+        _, pred = torch.max(outputs, 1)
+        total += labels.size(0)
+        correct += (pred == labels).sum().item()
+    return 100 * correct / total
+
+
 class ModelTrainer:
     def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None, criterion=None):
         self.model = model
@@ -21,6 +36,7 @@ class ModelTrainer:
         self.model.train()
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
+        history = {"loss": []}
         for epoch in range(self.epochs):
             running_loss = 0.0
             for inputs, labels in tqdm(loader, desc=f"Epoch {epoch + 1}/{self.epochs}", leave=False):
@@ -35,7 +51,11 @@ class ModelTrainer:
 
                 running_loss += loss.item()
 
-            print(f"Epoch {epoch + 1}/{self.epochs} - Loss: {running_loss / len(loader):.4f}")
+            avg_loss = running_loss / len(loader)
+            history["loss"].append(avg_loss)
+            print(f"Epoch {epoch + 1}/{self.epochs} - Loss: {avg_loss:.4f}")
+
+        return history
 
     def evaluate(self, dataset):
         self.model.eval()
@@ -66,17 +86,23 @@ class ModelTrainerCombined:
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr
         )
 
-    def fit(self, dataset):
+    def fit(self, dataset, train_eval_dataset=None, val_dataset=None):
         self.model.to(self.device)
         self.model.train()
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+
+        track_acc = train_eval_dataset is not None or val_dataset is not None
+        history = {"total": [], "mse": [], "ce": []}
+        if track_acc:
+            history["train_acc"] = []
+            history["val_acc"] = []
 
         for epoch in range(self.epochs):
             # Initialize trackers for all three losses
             running_loss = 0.0
             running_mse = 0.0
             running_ce = 0.0
-            
+
             # 1. FIX: Unpack all 3 items returned by your DistillationDataset
             for images, teacher_features, labels in tqdm(loader, desc=f"Epoch {epoch + 1}/{self.epochs}", leave=False):
                 images = images.to(self.device)
@@ -84,12 +110,12 @@ class ModelTrainerCombined:
                 labels = labels.to(self.device)
 
                 self.optimizer.zero_grad()
-                
+
                 student_features = self.model(images)
-                
+
                 # 2. FIX: Unpack the 3 losses returned by CombinedDistillationLoss
                 loss, loss_mse, loss_ce = self.criterion(student_features, teacher_features, labels)
-                
+
                 loss.backward()
                 self.optimizer.step()
 
@@ -103,13 +129,29 @@ class ModelTrainerCombined:
             avg_mse = running_mse / len(loader)
             avg_ce = running_ce / len(loader)
 
-            # 4. Print them beautifully side-by-side
-            print(
+            history["total"].append(avg_total)
+            history["mse"].append(avg_mse)
+            history["ce"].append(avg_ce)
+
+            msg = (
                 f"Epoch {epoch + 1}/{self.epochs} -> "
                 f"Total Loss: {avg_total:.4f} | "
                 f"MSE (Feature): {avg_mse:.4f} | "
                 f"CE (Classification): {avg_ce:.4f}"
             )
+
+            if track_acc:
+                teacher = self.criterion.teacher
+                train_acc = _distill_accuracy(self.model, teacher, train_eval_dataset, self.batch_size, self.device) if train_eval_dataset is not None else float("nan")
+                val_acc = _distill_accuracy(self.model, teacher, val_dataset, self.batch_size, self.device) if val_dataset is not None else float("nan")
+                self.model.train()  # _distill_accuracy left the model in eval mode
+                history["train_acc"].append(train_acc)
+                history["val_acc"].append(val_acc)
+                msg += f" | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%"
+
+            print(msg)
+
+        return history
 
     # def fit(self, dataset):
     #     self.model.to(self.device)
@@ -253,32 +295,38 @@ class ReletionalModelTrainer:
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr
         )
 
-    def fit(self, dataset):
+    def fit(self, dataset, train_eval_dataset=None, val_dataset=None):
         self.model.to(self.device)
         self.model.train()
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         rkd_distance = RkdDistanceLoss()
         rkd_angle = RkdAngleLoss()
 
+        track_acc = train_eval_dataset is not None or val_dataset is not None
+        history = {"total": [], "angle": [], "combined": []}
+        if track_acc:
+            history["train_acc"] = []
+            history["val_acc"] = []
+
         for epoch in range(self.epochs):
             # Initialize trackers for all three losses
             running_loss = 0.0
             running_angle = 0.0
             running_combined = 0.0
-            
+
             for images, teacher_features, labels in tqdm(loader, desc=f"Epoch {epoch + 1}/{self.epochs}", leave=False):
                 images = images.to(self.device)
                 teacher_features = teacher_features.to(self.device)
                 labels = labels.to(self.device)
 
                 self.optimizer.zero_grad()
-                
+
                 student_features = self.model(images)
-                
+
                 loss_combined, loss_mse, loss_ce = self.criterion(student_features, teacher_features, labels)
                 loss_rkd_dist = rkd_distance(student_features, teacher_features)
                 loss_rkd_angle = rkd_angle(student_features, teacher_features)
-                
+
                 loss = loss_combined
 
                 loss.backward()
@@ -293,13 +341,29 @@ class ReletionalModelTrainer:
             avg_angle = running_angle / len(loader)
             avg_combined = running_combined / len(loader)
 
-            # 4. Print them beautifully side-by-side
-            print(
+            history["total"].append(avg_total)
+            history["angle"].append(avg_angle)
+            history["combined"].append(avg_combined)
+
+            msg = (
                 f"Epoch {epoch + 1}/{self.epochs} -> "
                 f"Total Loss: {avg_total:.4f} | "
                 f"Angle (Feature): {avg_angle:.4f} | "
                 f"Combined (Classification): {avg_combined:.4f}"
             )
+
+            if track_acc:
+                teacher = self.criterion.teacher
+                train_acc = _distill_accuracy(self.model, teacher, train_eval_dataset, self.batch_size, self.device) if train_eval_dataset is not None else float("nan")
+                val_acc = _distill_accuracy(self.model, teacher, val_dataset, self.batch_size, self.device) if val_dataset is not None else float("nan")
+                self.model.train()  # _distill_accuracy left the model in eval mode
+                history["train_acc"].append(train_acc)
+                history["val_acc"].append(val_acc)
+                msg += f" | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%"
+
+            print(msg)
+
+        return history
 
     def evaluate(self, dataset):
         self.model.eval()
