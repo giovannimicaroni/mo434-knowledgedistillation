@@ -23,6 +23,7 @@ class ResNetTeacher(BaseTeacherModel):
 
         if self.num_classes != 1000:
             in_features = model.fc.in_features
+            print(in_features)
             model.fc = nn.Linear(in_features, self.num_classes) # type: ignore
 
         model.features = nn.Sequential(

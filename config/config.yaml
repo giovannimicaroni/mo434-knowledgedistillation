@@ -1,29 +1,29 @@
 teacher:
-  architecture: "vgg11"
+  architecture: "convnext"
   weights: "DEFAULT"
   weights_path: null
-  save_path: "checkpoints/teacher_vgg11.pth"
+  save_path: "checkpoints/teacher_convnext.pth"
   force_retrain: false
   pretrained: true
-  num_classes: 37
+  num_classes: 102
   freeze_feature_extractor: true
   train_classifier_only: true
 
 student:
-  architecture: "mobile_cnn"
+  architecture: "medium_large_student"
   force_reextract: false
 
 training:
   batch_size: 32
   fine_tune_epochs: 10
-  fine_tune_lr: 0.0001
-  distillation_epochs: 15
-  distillation_lr: 0.0002
+  fine_tune_lr: 0.0005
+  distillation_epochs: 20
+  distillation_lr: 0.0005
   optimizer: "Adam"
 
 dataset:
-  name: "oxford_pet"
-  path: "/home/gimicaroni/Documents/Datasets/Oxford-Pet-Dataset/images/images"
+  name: "flowers"
+  path: "/home/gabriel/Documentos/Datasets/102flowers/jpg"
   image_size: 224
 
 cache:

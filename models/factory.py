@@ -1,10 +1,12 @@
 from models.vgg_teacher import VGGTeacher
 from models.student import MobileStudentModel, SlimStudentModel, MediumLargeModel, MediumSlimModel
 from models.resnet_teacher import ResNetTeacher
+from models.convNext_teacher import ConvNeXtTeacher
 
 _TEACHERS = {
     "vgg11": VGGTeacher,
     "ResNet34": ResNetTeacher,
+    "convnext": ConvNeXtTeacher
 }
 
 _STUDENTS = {

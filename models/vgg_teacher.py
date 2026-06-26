@@ -22,7 +22,8 @@ class VGGTeacher(BaseTeacherModel):
             model = vgg11(weights=None)
 
         if self.num_classes != 1000:
-            in_features = model.classifier[-1].in_features
-            model.classifier[-1] = nn.Linear(in_features, self.num_classes) # type: ignore
+            in_features = model.classifier[0].in_features
+            print(in_features)
+            model.classifier = nn.Linear(in_features, self.num_classes) # type: ignore
 
         return model

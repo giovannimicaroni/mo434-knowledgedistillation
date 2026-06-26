@@ -72,7 +72,7 @@ class MobileStudentModel(BaseStudentModel):
             (256, True),  # 28 -> 14
             (256, False), # Keeps 14x14
             (512, True),  # 14 -> 7
-            (512, False)  # Keeps 7x7
+            (768, False)  # Keeps 7x7
         ]
         super().__init__(initial_channels=32, config=config)
     
@@ -83,7 +83,7 @@ class SlimStudentModel(BaseStudentModel):
             (64, True),
             (128, True),
             (256, True),
-            (512, False)  # Aggressive downsampling straight to 7x7
+            (768, False)  # Aggressive downsampling straight to 7x7
         ]
         super().__init__(initial_channels=32, config=config)
 
@@ -94,7 +94,7 @@ class MediumSlimModel(BaseStudentModel):
             (128, True),  # 56 -> 28
             (256, True),  # 28 -> 14
             (512, True),  # 14 -> 7
-            (512, False)  # Keeps 7x7, expands capacity at the bottleneck
+            (768, False)  # Keeps 7x7, expands capacity at the bottleneck
         ]
         # Starts with 32 initial channels
         super().__init__(initial_channels=32, config=config)
@@ -107,6 +107,6 @@ class MediumLargeModel(BaseStudentModel):
             (192, True),  # 28 -> 14 (Slimmed down from 256)
             (256, False), # 14 -> 14 (Slimmed down from 256)
             (512, True),  # 14 -> 7
-            (512, False)  # Keeps 7x7
+            (768, False)  # Keeps 7x7
         ]
         super().__init__(initial_channels=32, config=config)

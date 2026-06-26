@@ -69,6 +69,8 @@ def _evaluate_student(student, teacher, dataset, batch_size):
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
             features = student(images)
+            if features.dim() == 2:
+                features = features.unsqueeze(-1).unsqueeze(-1)
             outputs = teacher.forward_classifier(features)
             _, predicted = torch.max(outputs, 1)
             total += labels.size(0)
@@ -248,7 +250,11 @@ class CombinedDistillationLoss(nn.Module):
         
         # Calculate MSE on the pooled vectors instead of the raw spatial maps
         loss_mse = self.mse_loss(student_pooled, teacher_pooled)
-        student_logits = self.teacher.forward_classifier(student_features)
+
+        clf_features = student_features
+        if clf_features.dim() == 2:
+            clf_features = clf_features.unsqueeze(-1).unsqueeze(-1)
+        student_logits = self.teacher.forward_classifier(clf_features)
         loss_ce = self.entropy_loss(student_logits, labels)
         
         # 3. Combine them

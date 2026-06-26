@@ -324,8 +324,12 @@ class ReletionalModelTrainer:
                 student_features = self.model(images)
 
                 loss_combined, loss_mse, loss_ce = self.criterion(student_features, teacher_features, labels)
-                loss_rkd_dist = rkd_distance(student_features, teacher_features)
-                loss_rkd_angle = rkd_angle(student_features, teacher_features)
+
+                clf_features = student_features
+                if clf_features.dim() == 2:
+                    clf_features = clf_features.unsqueeze(-1).unsqueeze(-1)
+                loss_rkd_dist = rkd_distance(clf_features, teacher_features)
+                loss_rkd_angle = rkd_angle(clf_features, teacher_features)
 
                 loss = loss_combined
 
