@@ -19,6 +19,47 @@ import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
 
+import torch
+import torch.nn as nn
+import copy
+
+class PostDistillationRefiner(nn.Module):
+    """
+    Wraps the frozen student and a COPY of the teacher to be compatible
+    with the standard ModelTrainer. Images pass through the student to generate
+    features, which are then fed to the new teacher copy's classifier.
+    """
+    def __init__(self, student, teacher):
+        super().__init__()
+        self.student = student
+        
+        # 1. Create a completely independent copy of the teacher
+        # This ensures the original teacher passed in remains untouched
+        self.refined_teacher = copy.deepcopy(teacher)
+
+        # 2. Freeze the student completely
+        self.student.eval()
+        for param in self.student.parameters():
+            param.requires_grad = False
+
+        # 3. Freeze the teacher copy completely...
+        self.refined_teacher.eval()
+        for param in self.refined_teacher.parameters():
+            param.requires_grad = False
+
+        # 4. ...then unfreeze ONLY the teacher copy's classifier head.
+        for param in self.refined_teacher.classifier.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        # Extract features using the frozen student
+        with torch.no_grad():
+            features = self.student(x)
+            if features.dim() == 2:
+                features = features.unsqueeze(-1).unsqueeze(-1)
+                
+        # Route through the unfrozen classifier of the COPY
+        return self.refined_teacher.forward_classifier(features)
 
 class DistillationDataset(Dataset):
     """Pairs each image with the pre-extracted teacher feature vector for that image."""
@@ -332,6 +373,26 @@ def distill_student_combined(config_path=None, alpha=0.5):
         print("Number of parameters in the student: ", student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"])
         print("Number of parameters in the teacher: ", teacher.get_teacher_parameters()["total"])
         print("The ratio of the size of the student and the teacher is: ", (student.get_student_parameters()["total"] + teacher.get_teacher_parameters()["classifier_module"]) / teacher.get_teacher_parameters()["total"])
+    
+    # --- Post-Distillation Refinement ---
+        print("\n--- Starting Post-Distillation Refinement ---")
+        refinement_model = PostDistillationRefiner(student, teacher)
+        
+        refiner_trainer = ModelTrainer(
+            model=refinement_model,
+            lr=1e-4, 
+            epochs=5,
+            batch_size=cfg.training.batch_size,
+            criterion=nn.CrossEntropyLoss()
+        )
+        
+        refiner_history = refiner_trainer.fit(train_dataset)
+        print("--- Refinement Complete ---\n")
+        
+        # Extract the newly trained copy for evaluation or saving
+        final_teacher = refinement_model.refined_teacher 
+        
+        refiner_trainer.evaluate(test_dataset)
     return acc, student, teacher
 
 def distill_student_reletional(config_path=None, alpha=0.5):
@@ -417,5 +478,5 @@ def distill_student_reletional(config_path=None, alpha=0.5):
 #     plt.show()
 
 if __name__ == '__main__':
-    distill_student_combined(alpha=0.8)
-    # distill_student_reletional(alpha=0.8)
+    distill_student_combined(alpha=0)
+    #distill_student_reletional(alpha=0)

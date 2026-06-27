@@ -331,7 +331,7 @@ class ReletionalModelTrainer:
                 loss_rkd_dist = rkd_distance(clf_features, teacher_features)
                 loss_rkd_angle = rkd_angle(clf_features, teacher_features)
 
-                loss = loss_combined
+                loss = loss_combined + loss_rkd_angle + loss_rkd_dist
 
                 loss.backward()
                 self.optimizer.step()
