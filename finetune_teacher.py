@@ -9,8 +9,9 @@ from models.factory import build_teacher
 from trainers.model_trainer import ModelTrainer
 
 
-def finetune_teacher(config_path=None):
-    cfg = load_config(config_path)
+def finetune_teacher(config_path=None, cfg=None):
+    if cfg is None:
+        cfg = load_config(config_path)
 
     save_path = Path(cfg.teacher.save_path) if cfg.teacher.save_path else None
 

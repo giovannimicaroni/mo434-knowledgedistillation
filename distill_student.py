@@ -303,15 +303,16 @@ class CombinedDistillationLoss(nn.Module):
         
         return total_loss, loss_mse, loss_ce
 
-def distill_student_combined(config_path=None, alpha=0.5):
-    cfg = load_config(config_path)
+def distill_student_combined(config_path=None, alpha=0.5, cfg=None):
+    if cfg is None:
+        cfg = load_config(config_path)
 
-    run_name = f"combined_{cfg.teacher.architecture}_{cfg.dataset.name}_alpha{alpha}"
+    run_name = f"combined_{cfg.teacher.architecture}_{cfg.dataset.name}_{cfg.student.architecture}_alpha{alpha}"
     run_dir = Path("training_results") / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
     with _capture_logs(run_dir / "training_log.txt"):
-        teacher = finetune_teacher(config_path)
+        teacher = finetune_teacher(config_path, cfg=cfg)
 
         # Deterministic transforms only — no augmentation, since features are extracted once
         transform = transforms.Compose([

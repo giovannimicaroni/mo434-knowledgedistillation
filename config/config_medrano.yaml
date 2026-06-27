@@ -1,11 +1,11 @@
 teacher:
-  architecture: "convnext"
+  architecture: "ResNet34"
   weights: "DEFAULT"
   weights_path: null
-  save_path: "checkpoints/teacher_convnext.pth"
-  force_retrain: false
+  save_path: "checkpoints/teacher_resnet.pth"
+  force_retrain: true
   pretrained: true
-  num_classes: 102
+  num_classes: 10
   freeze_feature_extractor: true
   train_classifier_only: true
 
@@ -16,14 +16,14 @@ student:
 training:
   batch_size: 32
   fine_tune_epochs: 10
-  fine_tune_lr: 0.0005
+  fine_tune_lr: 0.0001
   distillation_epochs: 20
   distillation_lr: 0.0005
   optimizer: "Adam"
 
 dataset:
-  name: "flowers"
-  path: "/home/gabriel/Documentos/Datasets/102flowers/jpg"
+  name: "cifar_10"
+  path: "/home/gimicaroni/Documents/Datasets/CIFAR10"
   image_size: 224
 
 cache:

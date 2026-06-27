@@ -1,5 +1,11 @@
 from models.vgg_teacher import VGGTeacher
-from models.student import MobileStudentModel, SlimStudentModel, MediumLargeModel, MediumSlimModel
+from models.student import (
+    MobileStudentModel,
+    NanoStudentModel,
+    WideStudentModel,
+    DeepStudentModel,
+    BottleneckStudentModel,
+)
 from models.resnet_teacher import ResNetTeacher
 from models.convNext_teacher import ConvNeXtTeacher
 
@@ -9,11 +15,22 @@ _TEACHERS = {
     "convnext": ConvNeXtTeacher
 }
 
+# Channel count of each teacher's feature map (and classifier input). The student's
+# final 1x1 projection adapter maps its backbone output to this dimension so the same
+# student architectures can be distilled against any teacher.
+TEACHER_FEATURE_DIMS = {
+    "vgg11": 512,
+    "ResNet34": 512,
+    "convnext": 768,
+}
+
+# Comparison set: 5 students spanning a range of depth / width / total params.
 _STUDENTS = {
     "mobile_cnn": MobileStudentModel,
-    "slim_student": SlimStudentModel,
-    "medium_slim_student": MediumSlimModel,
-    "medium_large_student": MediumLargeModel
+    "nano_cnn": NanoStudentModel,
+    "wide_cnn": WideStudentModel,
+    "deep_cnn": DeepStudentModel,
+    "bottleneck_cnn": BottleneckStudentModel,
 }
 
 
@@ -28,4 +45,5 @@ def build_teacher(cfg):
 
 def build_student(cfg):
     cls = _STUDENTS[cfg.student.architecture]
-    return cls()
+    out_channels = TEACHER_FEATURE_DIMS[cfg.teacher.architecture]
+    return cls(out_channels=out_channels)

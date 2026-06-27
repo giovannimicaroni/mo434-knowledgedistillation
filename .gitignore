@@ -9,7 +9,8 @@ cache/
 
 # C extensions
 *.so
-
+*.md
+*.txt
 # Distribution / packaging
 .Python
 build/

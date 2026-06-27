@@ -1,32 +1,32 @@
-Loading finetuned teacher from checkpoints/teacher_resnet.pth
+Epoch 1/10 - Loss: 1.4325
+Epoch 2/10 - Loss: 0.9005
+Epoch 3/10 - Loss: 0.7784
+Epoch 4/10 - Loss: 0.7171
+Epoch 5/10 - Loss: 0.6823
+Epoch 6/10 - Loss: 0.6644
+Epoch 7/10 - Loss: 0.6477
+Epoch 8/10 - Loss: 0.6286
+Epoch 9/10 - Loss: 0.6293
+Epoch 10/10 - Loss: 0.6237
+Accuracy: 79.71%
+Teacher saved to checkpoints/teacher_resnet.pth
 Loading cached features from cache/features_ResNet34_cifar_10.pt
 Teacher model successfully frozen!
-Epoch 1/20 -> Total Loss: 0.8112 | MSE (Feature): 0.7128 | CE (Classification): 1.2046 | Train Acc: 64.27% | Val Acc: 62.94%
-Epoch 2/20 -> Total Loss: 0.6167 | MSE (Feature): 0.5601 | CE (Classification): 0.8431 | Train Acc: 75.36% | Val Acc: 72.55%
-Epoch 3/20 -> Total Loss: 0.5523 | MSE (Feature): 0.5161 | CE (Classification): 0.6970 | Train Acc: 78.47% | Val Acc: 74.83%
-Epoch 4/20 -> Total Loss: 0.5212 | MSE (Feature): 0.4993 | CE (Classification): 0.6090 | Train Acc: 83.03% | Val Acc: 79.21%
-Epoch 5/20 -> Total Loss: 0.4998 | MSE (Feature): 0.4903 | CE (Classification): 0.5376 | Train Acc: 84.58% | Val Acc: 79.81%
-Epoch 6/20 -> Total Loss: 0.4855 | MSE (Feature): 0.4845 | CE (Classification): 0.4898 | Train Acc: 83.78% | Val Acc: 78.94%
-Epoch 7/20 -> Total Loss: 0.4750 | MSE (Feature): 0.4801 | CE (Classification): 0.4548 | Train Acc: 85.75% | Val Acc: 79.87%
-Epoch 8/20 -> Total Loss: 0.4640 | MSE (Feature): 0.4767 | CE (Classification): 0.4134 | Train Acc: 89.34% | Val Acc: 82.82%
-Epoch 9/20 -> Total Loss: 0.4551 | MSE (Feature): 0.4738 | CE (Classification): 0.3805 | Train Acc: 89.17% | Val Acc: 82.53%
-Epoch 10/20 -> Total Loss: 0.4470 | MSE (Feature): 0.4711 | CE (Classification): 0.3506 | Train Acc: 90.84% | Val Acc: 82.59%
-Epoch 11/20 -> Total Loss: 0.4415 | MSE (Feature): 0.4690 | CE (Classification): 0.3315 | Train Acc: 91.20% | Val Acc: 83.08%
-Epoch 12/20 -> Total Loss: 0.4353 | MSE (Feature): 0.4668 | CE (Classification): 0.3094 | Train Acc: 90.27% | Val Acc: 81.64%
-Epoch 13/20 -> Total Loss: 0.4307 | MSE (Feature): 0.4653 | CE (Classification): 0.2920 | Train Acc: 92.40% | Val Acc: 83.81%
-Epoch 14/20 -> Total Loss: 0.4253 | MSE (Feature): 0.4638 | CE (Classification): 0.2710 | Train Acc: 91.23% | Val Acc: 82.42%
-Epoch 15/20 -> Total Loss: 0.4207 | MSE (Feature): 0.4621 | CE (Classification): 0.2551 | Train Acc: 94.47% | Val Acc: 84.32%
-Epoch 16/20 -> Total Loss: 0.4166 | MSE (Feature): 0.4609 | CE (Classification): 0.2394 | Train Acc: 93.59% | Val Acc: 84.04%
-Epoch 17/20 -> Total Loss: 0.4132 | MSE (Feature): 0.4598 | CE (Classification): 0.2268 | Train Acc: 95.27% | Val Acc: 85.14%
-Epoch 18/20 -> Total Loss: 0.4089 | MSE (Feature): 0.4582 | CE (Classification): 0.2120 | Train Acc: 95.53% | Val Acc: 84.83%
-Epoch 19/20 -> Total Loss: 0.4067 | MSE (Feature): 0.4573 | CE (Classification): 0.2042 | Train Acc: 95.76% | Val Acc: 85.02%
-Epoch 20/20 -> Total Loss: 0.4036 | MSE (Feature): 0.4563 | CE (Classification): 0.1927 | Train Acc: 96.00% | Val Acc: 84.49%
-Loss curve saved to training_results/combined_ResNet34_cifar_10_alpha0.8/loss_curve.png
-Accuracy curve saved to training_results/combined_ResNet34_cifar_10_alpha0.8/accuracy_curve.png
-
-Evaluating teacher and student...
-Teacher accuracy: 81.91%
-Student accuracy: 84.77%
-Number of parameters in the student:  525450
-Number of parameters in the teacher:  21289802
-The ratio of the size of the student and the teacher is:  0.024680830756434465
+Epoch 1/20 -> Total Loss: 0.7813 | MSE (Feature): 0.6760 | CE (Classification): 1.2026 | Train Acc: 63.94% | Val Acc: 63.02%
+Epoch 2/20 -> Total Loss: 0.5882 | MSE (Feature): 0.5294 | CE (Classification): 0.8237 | Train Acc: 75.59% | Val Acc: 73.30%
+Epoch 3/20 -> Total Loss: 0.5341 | MSE (Feature): 0.4983 | CE (Classification): 0.6775 | Train Acc: 77.19% | Val Acc: 73.47%
+Epoch 4/20 -> Total Loss: 0.5076 | MSE (Feature): 0.4876 | CE (Classification): 0.5876 | Train Acc: 82.79% | Val Acc: 78.93%
+Epoch 5/20 -> Total Loss: 0.4898 | MSE (Feature): 0.4809 | CE (Classification): 0.5252 | Train Acc: 85.25% | Val Acc: 80.43%
+Epoch 6/20 -> Total Loss: 0.4748 | MSE (Feature): 0.4762 | CE (Classification): 0.4695 | Train Acc: 87.47% | Val Acc: 82.55%
+Epoch 7/20 -> Total Loss: 0.4660 | MSE (Feature): 0.4724 | CE (Classification): 0.4405 | Train Acc: 86.42% | Val Acc: 80.59%
+Epoch 8/20 -> Total Loss: 0.4560 | MSE (Feature): 0.4690 | CE (Classification): 0.4038 | Train Acc: 89.77% | Val Acc: 83.51%
+Epoch 9/20 -> Total Loss: 0.4482 | MSE (Feature): 0.4662 | CE (Classification): 0.3762 | Train Acc: 90.72% | Val Acc: 83.94%
+Epoch 10/20 -> Total Loss: 0.4410 | MSE (Feature): 0.4642 | CE (Classification): 0.3485 | Train Acc: 91.33% | Val Acc: 83.81%
+Epoch 11/20 -> Total Loss: 0.4359 | MSE (Feature): 0.4623 | CE (Classification): 0.3304 | Train Acc: 91.61% | Val Acc: 83.90%
+Epoch 12/20 -> Total Loss: 0.4308 | MSE (Feature): 0.4605 | CE (Classification): 0.3121 | Train Acc: 91.24% | Val Acc: 83.49%
+Epoch 13/20 -> Total Loss: 0.4262 | MSE (Feature): 0.4591 | CE (Classification): 0.2948 | Train Acc: 94.10% | Val Acc: 85.17%
+Epoch 14/20 -> Total Loss: 0.4213 | MSE (Feature): 0.4576 | CE (Classification): 0.2762 | Train Acc: 94.28% | Val Acc: 85.41%
+Epoch 15/20 -> Total Loss: 0.4177 | MSE (Feature): 0.4560 | CE (Classification): 0.2644 | Train Acc: 94.97% | Val Acc: 85.71%
+Epoch 16/20 -> Total Loss: 0.4139 | MSE (Feature): 0.4545 | CE (Classification): 0.2514 | Train Acc: 95.70% | Val Acc: 86.13%
+Epoch 17/20 -> Total Loss: 0.4112 | MSE (Feature): 0.4534 | CE (Classification): 0.2423 | Train Acc: 95.45% | Val Acc: 86.41%
+Epoch 18/20 -> Total Loss: 0.4080 | MSE (Feature): 0.4525 | CE (Classification): 0.2298 | Train Acc: 96.12% | Val Acc: 85.83%
