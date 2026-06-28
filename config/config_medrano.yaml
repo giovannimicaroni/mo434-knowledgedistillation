@@ -16,7 +16,7 @@ student:
 training:
   batch_size: 32
   fine_tune_epochs: 10
-  fine_tune_lr: 0.0001
+  fine_tune_lr: 0.0005
   distillation_epochs: 20
   distillation_lr: 0.0005
   optimizer: "Adam"
