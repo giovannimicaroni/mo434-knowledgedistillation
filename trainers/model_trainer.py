@@ -76,7 +76,7 @@ class ModelTrainer:
         return accuracy
 
 class ModelTrainerCombined:
-    def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None, criterion=None):
+    def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None, criterion=None, scheduler="none", lr_min=0.0):
         self.model = model
         self.epochs = epochs
         self.batch_size = batch_size
@@ -85,6 +85,12 @@ class ModelTrainerCombined:
         self.optimizer = optimizer_cls(
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr
         )
+        if scheduler == "cosine":
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=epochs, eta_min=lr_min
+            )
+        else:
+            self.scheduler = None
 
     def fit(self, dataset, train_eval_dataset=None, val_dataset=None):
         self.model.to(self.device)
@@ -92,7 +98,7 @@ class ModelTrainerCombined:
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
         track_acc = train_eval_dataset is not None or val_dataset is not None
-        history = {"total": [], "mse": [], "ce": []}
+        history = {"total": [], "mse": [], "ce": [], "lr": []}
         if track_acc:
             history["train_acc"] = []
             history["val_acc"] = []
@@ -129,15 +135,18 @@ class ModelTrainerCombined:
             avg_mse = running_mse / len(loader)
             avg_ce = running_ce / len(loader)
 
+            current_lr = self.optimizer.param_groups[0]["lr"]
             history["total"].append(avg_total)
             history["mse"].append(avg_mse)
             history["ce"].append(avg_ce)
+            history["lr"].append(current_lr)
 
             msg = (
                 f"Epoch {epoch + 1}/{self.epochs} -> "
                 f"Total Loss: {avg_total:.4f} | "
                 f"MSE (Feature): {avg_mse:.4f} | "
-                f"CE (Classification): {avg_ce:.4f}"
+                f"CE (Classification): {avg_ce:.4f} | "
+                f"LR: {current_lr:.2e}"
             )
 
             if track_acc:
@@ -150,6 +159,9 @@ class ModelTrainerCombined:
                 msg += f" | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%"
 
             print(msg)
+
+            if self.scheduler is not None:
+                self.scheduler.step()
 
         return history
 

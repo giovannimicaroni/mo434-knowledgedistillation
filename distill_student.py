@@ -147,8 +147,8 @@ def _save_loss_curves(history, run_dir, run_name):
     """Plot every loss series in `history` against epoch and save to run_dir/loss_curve.png."""
     plt.figure()
     for label, values in history.items():
-        if label.endswith("_acc"):
-            continue  # accuracy series are plotted separately by _save_accuracy_curves
+        if label.endswith("_acc") or label == "lr":
+            continue  # accuracy series are plotted separately; lr is on a different scale
         epochs = range(1, len(values) + 1)
         plt.plot(epochs, values, marker="o", label=label)
 
@@ -359,6 +359,8 @@ def distill_student_combined(config_path=None, alpha=0.5, cfg=None):
             epochs=cfg.training.distillation_epochs,
             batch_size=cfg.training.batch_size,
             criterion=combined_criterion,
+            scheduler=cfg.training.scheduler,
+            lr_min=cfg.training.lr_min,
         )
         history = trainer.fit(
             distillation_dataset,

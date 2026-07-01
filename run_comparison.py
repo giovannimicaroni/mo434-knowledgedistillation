@@ -97,7 +97,7 @@ def _write_table(rows, out_dir, teacher_arch, dataset_name):
 def run_matrix(matrix_path=MATRIX_DEFAULT):
     matrix = _load_matrix(matrix_path)
     template_config = matrix["template_config"]
-    alpha = matrix.get("alpha", 0.5)
+    alpha = matrix.get("alpha", 0.8)
     teachers = matrix["teachers"]
     students = matrix["students"]
     datasets = matrix["datasets"]

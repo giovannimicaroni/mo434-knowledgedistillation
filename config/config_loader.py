@@ -35,6 +35,8 @@ class TrainingConfig:
     distillation_epochs: int
     distillation_lr: float
     optimizer: str
+    scheduler: str = "none"
+    lr_min: float = 1e-5
 
 
 @dataclass

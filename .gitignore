@@ -11,6 +11,8 @@ cache/
 *.so
 *.md
 *.txt
+*.png 
+
 # Distribution / packaging
 .Python
 build/
