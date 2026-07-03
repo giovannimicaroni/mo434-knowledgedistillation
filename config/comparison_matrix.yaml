@@ -25,15 +25,15 @@ students:
 
 datasets:
   - name: "cifar_10"
-    path: "/home/gimicaroni/Documents/Datasets/CIFAR10"
+    path: "/home/gabriel/Documentos/Datasets/CIFAR10"
     num_classes: 10
     image_size: 224
   - name: "flowers"
-    path: "/home/gimicaroni/Documents/Datasets/Flowers102"
+    path: "/home/gabriel/Documentos/Datasets/Flowers102"
     num_classes: 102
     image_size: 224
   - name: "oxford_pet"        # NOTE: path must contain no digits (label-parsing constraint)
-    path: "/home/gimicaroni/Documents/Datasets/Oxford-Pet-Dataset/images/images"
+    path: "/home/gabriel/Documentos/Datasets/Oxford-Pet-Dataset/images/images"
     num_classes: 37
     image_size: 224
   # - name: "tiny_imagenet"

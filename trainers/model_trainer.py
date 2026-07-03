@@ -76,7 +76,21 @@ class ModelTrainer:
         return accuracy
 
 class ModelTrainerCombined:
-    def __init__(self, model, lr, epochs, batch_size=32, optimizer_cls=torch.optim.Adam, device=None, criterion=None, scheduler="none", lr_min=0.0):
+    def __init__(
+        self, 
+        model, 
+        lr, 
+        epochs, 
+        batch_size=32, 
+        optimizer_cls=torch.optim.Adam, 
+        device=None, 
+        criterion=None, 
+        scheduler="none", 
+        lr_min=0.0,
+        rkd_warmup_epochs=0,      # Number of warmup epochs using purely RKD
+        rkd_dist_weight=1.0,      # Weight factor for RKD Distance loss
+        rkd_angle_weight=2.0      # Weight factor for RKD Angle loss
+    ):
         self.model = model
         self.epochs = epochs
         self.batch_size = batch_size
@@ -85,12 +99,22 @@ class ModelTrainerCombined:
         self.optimizer = optimizer_cls(
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr
         )
+        
         if scheduler == "cosine":
             self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 self.optimizer, T_max=epochs, eta_min=lr_min
             )
         else:
             self.scheduler = None
+
+        # RKD Warmup configurations
+        self.rkd_warmup_epochs = rkd_warmup_epochs
+        self.rkd_dist_weight = rkd_dist_weight
+        self.rkd_angle_weight = rkd_angle_weight
+        
+        if self.rkd_warmup_epochs > 0:
+            self.rkd_distance = RkdDistanceLoss()
+            self.rkd_angle = RkdAngleLoss()
 
     def fit(self, dataset, train_eval_dataset=None, val_dataset=None):
         self.model.to(self.device)
@@ -99,17 +123,24 @@ class ModelTrainerCombined:
 
         track_acc = train_eval_dataset is not None or val_dataset is not None
         history = {"total": [], "mse": [], "ce": [], "lr": []}
+        
+        if self.rkd_warmup_epochs > 0:
+            history["rkd_dist"] = []
+            history["rkd_angle"] = []
+            
         if track_acc:
             history["train_acc"] = []
             history["val_acc"] = []
 
         for epoch in range(self.epochs):
-            # Initialize trackers for all three losses
+            is_warmup = epoch < self.rkd_warmup_epochs
+            
             running_loss = 0.0
             running_mse = 0.0
             running_ce = 0.0
+            running_rkd_dist = 0.0
+            running_rkd_angle = 0.0
 
-            # 1. FIX: Unpack all 3 items returned by your DistillationDataset
             for images, teacher_features, labels in tqdm(loader, desc=f"Epoch {epoch + 1}/{self.epochs}", leave=False):
                 images = images.to(self.device)
                 teacher_features = teacher_features.to(self.device)
@@ -119,18 +150,33 @@ class ModelTrainerCombined:
 
                 student_features = self.model(images)
 
-                # 2. FIX: Unpack the 3 losses returned by CombinedDistillationLoss
-                loss, loss_mse, loss_ce = self.criterion(student_features, teacher_features, labels)
+                # Compute standard KD losses for tracking/post-warmup optimization
+                loss_combined, loss_mse, loss_ce = self.criterion(student_features, teacher_features, labels)
+
+                if is_warmup:
+                    # Pure RKD Warmup: optimize ONLY relational distance & angle
+                    clf_features = student_features
+                    if clf_features.dim() == 2:
+                        clf_features = clf_features.unsqueeze(-1).unsqueeze(-1)
+                        
+                    loss_rkd_dist = self.rkd_distance(clf_features, teacher_features)
+                    loss_rkd_angle = self.rkd_angle(clf_features, teacher_features)
+                    
+                    loss = (self.rkd_dist_weight * loss_rkd_dist) + (self.rkd_angle_weight * loss_rkd_angle)
+                    
+                    running_rkd_dist += loss_rkd_dist.item()
+                    running_rkd_angle += loss_rkd_angle.item()
+                else:
+                    # Standard KD Phase: optimize purely on the combined loss
+                    loss = loss_combined
 
                 loss.backward()
                 self.optimizer.step()
 
-                # 3. Accumulate all losses using .item()
                 running_loss += loss.item()
                 running_mse += loss_mse.item()
                 running_ce += loss_ce.item()
 
-            # Calculate the averages over the entire epoch
             avg_total = running_loss / len(loader)
             avg_mse = running_mse / len(loader)
             avg_ce = running_ce / len(loader)
@@ -141,19 +187,28 @@ class ModelTrainerCombined:
             history["ce"].append(avg_ce)
             history["lr"].append(current_lr)
 
+            phase_label = "WARMUP (RKD)" if is_warmup else "STANDARD KD"
             msg = (
-                f"Epoch {epoch + 1}/{self.epochs} -> "
-                f"Total Loss: {avg_total:.4f} | "
-                f"MSE (Feature): {avg_mse:.4f} | "
-                f"CE (Classification): {avg_ce:.4f} | "
-                f"LR: {current_lr:.2e}"
+                f"Epoch {epoch + 1}/{self.epochs} [{phase_label}] -> "
+                f"Optim Loss: {avg_total:.4f} | "
+                f"MSE: {avg_mse:.4f} | "
+                f"CE: {avg_ce:.4f}"
             )
+            
+            if is_warmup:
+                avg_rkd_dist = running_rkd_dist / len(loader)
+                avg_rkd_angle = running_rkd_angle / len(loader)
+                history["rkd_dist"].append(avg_rkd_dist)
+                history["rkd_angle"].append(avg_rkd_angle)
+                msg += f" | RKD-Dist: {avg_rkd_dist:.4f} | RKD-Angle: {avg_rkd_angle:.4f}"
+
+            msg += f" | LR: {current_lr:.2e}"
 
             if track_acc:
                 teacher = self.criterion.teacher
                 train_acc = _distill_accuracy(self.model, teacher, train_eval_dataset, self.batch_size, self.device) if train_eval_dataset is not None else float("nan")
                 val_acc = _distill_accuracy(self.model, teacher, val_dataset, self.batch_size, self.device) if val_dataset is not None else float("nan")
-                self.model.train()  # _distill_accuracy left the model in eval mode
+                self.model.train()
                 history["train_acc"].append(train_acc)
                 history["val_acc"].append(val_acc)
                 msg += f" | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%"
@@ -164,30 +219,7 @@ class ModelTrainerCombined:
                 self.scheduler.step()
 
         return history
-
-    # def fit(self, dataset):
-    #     self.model.to(self.device)
-    #     self.model.train()
-    #     loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-
-    #     for epoch in range(self.epochs):
-    #         running_loss = 0.0
-    #         for images, teacher_features, labels in tqdm(loader, desc=f"Epoch {epoch + 1}/{self.epochs}", leave=False):
-    #             images = images.to(self.device)
-    #             teacher_features = teacher_features.to(self.device)
-    #             labels = labels.to(self.device)
-
-    #             self.optimizer.zero_grad()
-    #             student_features = self.model(images)
-    #             total_loss, mse, ce = self.criterion(student_features, teacher_features, labels)
-
-    #             total_loss.backward()
-    #             self.optimizer.step()
-
-    #             running_loss += total_loss.item()
-
-    #         print(f"Epoch {epoch + 1}/{self.epochs} - Loss: {running_loss / len(loader):.4f}")
-
+    
     def evaluate(self, dataset):
         self.model.eval()
         self.model.to(self.device)

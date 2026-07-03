@@ -286,8 +286,11 @@ class CombinedDistillationLoss(nn.Module):
     def forward(self, student_features, teacher_features, labels):
 
 
-        student_pooled = torch.mean(student_features, dim=[2, 3])
-        teacher_pooled = torch.mean(teacher_features, dim=[2, 3])
+        #student_pooled = torch.mean(student_features, dim=[2, 3])
+        #teacher_pooled = torch.mean(teacher_features, dim=[2, 3])
+
+        student_pooled = student_features
+        teacher_pooled = teacher_features
         
         # Calculate MSE on the pooled vectors instead of the raw spatial maps
         loss_mse = self.mse_loss(student_pooled, teacher_pooled)
@@ -361,6 +364,7 @@ def distill_student_combined(config_path=None, alpha=0.5, cfg=None):
             criterion=combined_criterion,
             scheduler=cfg.training.scheduler,
             lr_min=cfg.training.lr_min,
+            rkd_warmup_epochs=0,
         )
         history = trainer.fit(
             distillation_dataset,
@@ -481,5 +485,5 @@ def distill_student_reletional(config_path=None, alpha=0.5):
 #     plt.show()
 
 if __name__ == '__main__':
-    distill_student_combined(alpha=0)
+    distill_student_combined(alpha=0.8)
     #distill_student_reletional(alpha=0)
