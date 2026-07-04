@@ -35,12 +35,18 @@ class BaseStudentModel(nn.Module):
         #    to a 7x7 spatial map.
         self.features = self._make_layers(initial_channels, config)
 
-        # 3. 1x1 projection adapter mapping the backbone's last channel count to
-        #    the teacher's feature dimension (e.g. 512 for VGG11/ResNet34, 768 for
-        #    ConvNeXt-Small). This lets the same backbone be distilled against any
-        #    teacher. Output shape becomes (B, out_channels, 7, 7).
+        # 3. Smoothed projection adapter
+        #    Gradually transitions channel dimensions and stabilizes features
+        #    before matching the teacher's output dimension.
         backbone_out = config[-1][0]
-        self.proj = nn.Conv2d(backbone_out, out_channels, kernel_size=1)
+        mid_channels = (backbone_out + out_channels) // 2
+        
+        self.proj = nn.Sequential(
+            nn.Conv2d(backbone_out, mid_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=1)
+        )
 
     def _make_layers(self, in_channels, config):
         layers = []

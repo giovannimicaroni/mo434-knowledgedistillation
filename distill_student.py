@@ -272,7 +272,7 @@ class DistillationDatasetCombined(Dataset):
         return image, self.teacher_features[idx], label
     
 class CombinedDistillationLoss(nn.Module):
-    def __init__(self, teacher_model, alpha=0.5):
+    def __init__(self, teacher_model, alpha=0.5, pre_gap=True):
         """
         alpha: Weight balancing the two losses. 
                alpha=1.0 is pure MSE, alpha=0.0 is pure Cross Entropy.
@@ -282,15 +282,17 @@ class CombinedDistillationLoss(nn.Module):
         self.alpha = alpha
         self.mse_loss = nn.MSELoss()
         self.entropy_loss = nn.CrossEntropyLoss()
+        self.pre_gap = pre_gap
 
     def forward(self, student_features, teacher_features, labels):
 
-
-        #student_pooled = torch.mean(student_features, dim=[2, 3])
-        #teacher_pooled = torch.mean(teacher_features, dim=[2, 3])
-
         student_pooled = student_features
         teacher_pooled = teacher_features
+        
+        if(not self.pre_gap):
+            student_pooled = torch.mean(student_features, dim=[2, 3])
+            teacher_pooled = torch.mean(teacher_features, dim=[2, 3])
+
         
         # Calculate MSE on the pooled vectors instead of the raw spatial maps
         loss_mse = self.mse_loss(student_pooled, teacher_pooled)
@@ -306,7 +308,7 @@ class CombinedDistillationLoss(nn.Module):
         
         return total_loss, loss_mse, loss_ce
 
-def distill_student_combined(config_path=None, alpha=0.5, cfg=None):
+def distill_student_combined(config_path=None, alpha=0.5, cfg=None, pre_gap=True):
     if cfg is None:
         cfg = load_config(config_path)
 
@@ -345,7 +347,7 @@ def distill_student_combined(config_path=None, alpha=0.5, cfg=None):
         teacher_features = _extract_teacher_features(teacher, train_dataset, cfg.training.batch_size, cache_path)
         distillation_dataset = DistillationDatasetCombined(train_dataset, teacher_features)
 
-        combined_criterion = CombinedDistillationLoss(teacher, alpha=alpha)
+        combined_criterion = CombinedDistillationLoss(teacher, alpha=alpha, pre_gap=pre_gap)
 
         student = build_student(cfg)
 
@@ -485,5 +487,5 @@ def distill_student_reletional(config_path=None, alpha=0.5):
 #     plt.show()
 
 if __name__ == '__main__':
-    distill_student_combined(alpha=0.8)
+    distill_student_combined(alpha=0.8, pre_gap=True)
     #distill_student_reletional(alpha=0)
