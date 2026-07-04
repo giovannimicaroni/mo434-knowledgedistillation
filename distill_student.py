@@ -429,9 +429,9 @@ def distill_student_reletional(config_path=None, alpha=0.5):
         seed = 42
         gen = torch.Generator().manual_seed(seed)
 
-        train_dataset, test_dataset = random_split(
+        train_dataset, val_dataset, test_dataset = random_split(
             dataset,
-            lengths=[0.8, 0.2],
+            lengths=[0.8, 0.1, 0.1],
             generator=gen
         )
 
@@ -463,7 +463,7 @@ def distill_student_reletional(config_path=None, alpha=0.5):
         history = trainer.fit(
             distillation_dataset,
             train_eval_dataset=train_dataset,
-            val_dataset=test_dataset,
+            val_dataset=val_dataset,
         )
         _save_loss_curves(history, run_dir, run_name)
         _save_accuracy_curves(history, run_dir, run_name)
@@ -488,4 +488,5 @@ def distill_student_reletional(config_path=None, alpha=0.5):
 
 if __name__ == '__main__':
     distill_student_combined(alpha=0.8, pre_gap=True)
+    distill_student_combined(alpha=0.8, pre_gap=False)
     #distill_student_reletional(alpha=0)

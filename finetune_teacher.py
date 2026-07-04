@@ -36,9 +36,9 @@ def finetune_teacher(config_path=None, cfg=None):
     seed = 42
     gen = torch.Generator().manual_seed(seed)
 
-    train_dataset, test_dataset = random_split(
+    train_dataset, val_dataset, test_dataset = random_split(
         dataset, 
-        lengths=[0.8, 0.2],
+        lengths=[0.8, 0.1, 0.1],
         generator=gen
     )
     teacher = build_teacher(cfg)
