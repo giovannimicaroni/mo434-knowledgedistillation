@@ -5,7 +5,7 @@ teacher:
   save_path: "checkpoints/teacher_resnet.pth"
   force_retrain: false
   pretrained: true
-  num_classes: 102
+  num_classes: 10
   freeze_feature_extractor: true
   train_classifier_only: true
 
@@ -24,7 +24,7 @@ training:
   lr_min: 0.00001
 
 dataset:
-  name: "flowers"
+  name: "cifar_10"
   path: "/home/gabriel/Documentos/Datasets/CIFAR10"
   image_size: 224
 
