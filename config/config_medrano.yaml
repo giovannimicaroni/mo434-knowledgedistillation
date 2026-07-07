@@ -1,0 +1,33 @@
+teacher:
+  architecture: "ResNet34"
+  weights: "DEFAULT"
+  weights_path: null
+  save_path: "checkpoints/teacher_resnet.pth"
+  force_retrain: false
+  pretrained: true
+  num_classes: 10
+  freeze_feature_extractor: true
+  train_classifier_only: true
+
+student:
+  architecture: "mobile_cnn"
+  force_reextract: false
+
+training:
+  batch_size: 32
+  fine_tune_epochs: 10
+  fine_tune_lr: 0.001
+  distillation_epochs: 25
+  distillation_lr: 0.001
+  optimizer: "Adam"
+  scheduler: "cosine"
+  lr_min: 0.00001
+
+dataset:
+  name: "cifar_10"
+  path: "/home/gabriel/Documentos/Datasets/CIFAR10"
+  image_size: 224
+
+cache:
+  dir: "cache"
+

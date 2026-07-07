@@ -1,0 +1,42 @@
+# Matrix definition for run_comparison.py.
+#
+# For every (teacher x dataset) combination the driver runs all 5 students and
+# writes a comparison table. Fill in the machine-specific dataset `path` values
+# and confirm `num_classes` before running. Trim `teachers` / `datasets` to a
+# single entry first to smoke-test the pipeline (see STUDENT_COMPARISON_PLAN.md).
+
+# Base config supplying shared training params (batch_size, lrs, epochs, optimizer).
+template_config: "config/config_medrano.yaml"
+
+# Loss weighting passed to CombinedDistillationLoss (1.0 = pure MSE, 0.0 = pure CE).
+alpha: 0.8
+
+teachers:
+  - "ResNet34"
+  - "vgg11"
+  - "convnext"
+
+students:
+  - "mobile_cnn"
+  - "nano_cnn"
+  - "wide_cnn"
+  - "deep_cnn"
+  - "bottleneck_cnn"
+
+datasets:
+  - name: "cifar_10"
+    path: "/home/gabriel/Documentos/Datasets/CIFAR10"
+    num_classes: 10
+    image_size: 224
+  - name: "flowers"
+    path: "/home/gabriel/Documentos/Datasets/Flowers102"
+    num_classes: 102
+    image_size: 224
+  - name: "oxford_pet"        # NOTE: path must contain no digits (label-parsing constraint)
+    path: "/home/gabriel/Documentos/Datasets/Oxford-Pet-Dataset/images/images"
+    num_classes: 37
+    image_size: 224
+  # - name: "tiny_imagenet"
+  #   path: "/abs/path/to/tiny-imagenet-200"
+  #   num_classes: 200
+  #   image_size: 224
